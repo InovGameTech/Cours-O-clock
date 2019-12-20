@@ -1,0 +1,18 @@
+## Liste des étapes lors d'une requête à l'API depuis le front, exemple sur /lists :
+- Front : chargement du DOM
+- Front : on appelle app.init() qui va initialiser l'appli (ajout évènements, ajout du bouton de liste...)
+- Front : app.loadLists()
+- Front : Requête ajax sur le endpoint /lists
+- Back : on reçoit la demande /lists
+- Back : AltoRouter regarde si une route correspond
+- Back : Il trouve la route.
+- Back : AltoDispatcher appelle le controller associé (ListController) et la méthode associée (listsAction())
+- Back : La méthode listsAction() fait alors appel à ListModel en appelant la méthode findAll()
+- Back : Elle transmet ensuite ce tableau de résultat à la méthode showJson du CoreController
+- Back : Cette méthode envoie les bonnes entêtes HTTP puis encode la réponse en JSON.
+- Back : Pour se faire, json_encode parcours le tableau des ListModel.
+- Back : A chaque objet ListModel rencontré, il appelle la méthode jsonSerialize qui lui retourne les propriétés dans un tableau.
+- Back : json_encode peut alors encoder en JSON.
+- Back : La réponse JSON est alors envoyée au code gérant le requête Ajax côté Front.
+- Front : La méthode done(response) récupère la réponse dans un objet JS.
+- Front : On utilise cet objet pour générer nos listes.
