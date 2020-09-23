@@ -1,82 +1,114 @@
-Introduction au système de bundle
-=================================
+Cookies, Session, FlashMessages
+======================================
 
-Un bundle est similaire à la notion de plugin, mais "en mieux". La différence est que dans Symfony _tout_ est un bundle, depuis le noyau du framework jusqu'à votre code d'application. Vous pouvez ainsi utiliser des bundles tiers ou distribuer les vôtres. Il est donc facile de choisir quelles fonctionnalités vous souhaitez activer dans votre application et de les régler selon vos besoins.
+Lire et écrire dans un cookie
+-----------------------------
 
-Un bundle est un ensemble de fichiers rassemblés dans un dossier et qui implémente une fonctionnalité, par exemple un BlogBundle, un ForumBundle, un bundle pour gérer les utilisateurs.
+D'après la doc : https://symfony.com/doc/current/components/http_foundation.html#setting-cookies
 
-Les bundles utilisés par votre application doivent être activés dans la classe `AppKernel` :
-
-```php
-// app/AppKernel.php
-public function registerBundles()
-{
-    $bundles = array(
-        new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
-        new Symfony\Bundle\SecurityBundle\SecurityBundle(),
-        new Symfony\Bundle\TwigBundle\TwigBundle(),
-        new Symfony\Bundle\MonologBundle\MonologBundle(),
-        new Symfony\Bundle\SwiftmailerBundle\SwiftmailerBundle(),
-        new Symfony\Bundle\DoctrineBundle\DoctrineBundle(),
-        new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
-        new AppBundle\AppBundle(),
-    );
-
-    if (in_array($this->getEnvironment(), array('dev', 'test'))) {
-        $bundles[] = new Symfony\Bundle\WebProfilerBundle\WebProfilerBundle();
-        $bundles[] = new Sensio\Bundle\DistributionBundle\SensioDistributionBundle();
-        $bundles[] = new Sensio\Bundle\GeneratorBundle\SensioGeneratorBundle();
-    }
-
-    return $bundles;
-}
-```
-Vous pouvez ici contrôler quel bundle est utilisé, en l'activant ou le désactivant.
-
-Créer un bundle
----------------
-
-L'_Edition Standard de Symfony_ ou les projets créés par défaut avec l'éxécutable `symfony new my_project` vous fournit un bundle prêt-à-l'emploi, nommé `AppBundle`.
-
-**Exemple de code minimal pour définir un bundle**
+Ecrire dans un cookie, exemple depuis un contrôleur  :
 
 ```php
-// src/Acme/TestBundle/AcmeTestBundle.php
-namespace Acme\TestBundle;
-
-use Symfony\Component\HttpKernel\Bundle\Bundle;
-
-class AcmeTestBundle extends Bundle
+/**
+ * @Route("/cookie/set", name="cookie_set")
+ */
+public function cookieSetAction(Request $request)
 {
+    $response = new Response();
+    $response->headers->setCookie(new Cookie('dog', 'Rex');
+    $response->send();
+    
+    return $this->redirectToRoute('homepage');
 }
 ```
 
-**Activation du bundle**
+Lire depuis un contrôleur :
+```php
+$dog = $request->cookies->get('dog');
+```
+Lire depuis Twig :
+```php
+{{ app.request.cookies.get('dog') }}
+```
+
+Utiliser la session
+-------------------
+
+La session peut être utilisée de manière très simple depuis un contrôleur comme ceci :
 
 ```php
-// app/AppKernel.php
-public function registerBundles()
-{
-    $bundles = array(
-        // ...
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-        // register your bundle
-        new Acme\TestBundle\AcmeTestBundle(),
-    );
+public function indexAction(SessionInterface $session)
+{
+    // Stocke un attribut pour utilisation lors d'une requête ultérieure
+    $session->set('name', 'Charles');
+
+    // Récupère un attribut définit dans un contrôleur d'une autre requête du même utilisateur
+    $foobar = $session->get('name');
+
+    // Utilisation d'une valeur par défaut (argument 2) si l'attribut 'name' n'existe pas
+    $name = $session->get('name', 'Anonymous');
+}
+```
+
+Messages Flash
+--------------
+
+Les messages Flash sont des messages qui sont stockés puis effacés au moment où vous les récupérer. Très pratique pour indiquer une notification d'une requête à l'autre, ici suite à une soumission de formulaire :
+
+```php
+use Symfony\Component\HttpFoundation\Request;
+
+public function updateAction(Request $request)
+{
     // ...
 
-    return $bundles;
+    if ($form->isSubmitted() && $form->isValid()) {
+        // Traite le formulaire
+        // ...
+
+        $this->addFlash(
+            'notice',
+            'Your changes were saved!'
+        );
+
+        return $this->redirectToRoute(...);
+    }
+
+    return $this->render(...);
 }
 ```
+`$this->addFlash()` est équivalent à `$request->getSession()->getFlashBag()->add()`.
 
-**Créer un bundle avec la ligne de commaned Symfony**
+Les messages Flash sont dont stockés dans la session.
 
-`php bin/console generate:bundle --namespace=Acme/TestBundle`
+Affichage des messages
+----------------------
 
-Cette commande ajoute le bundle pour vous dans le ficher `AppKernel`.
+```twig
+{# app/Resources/views/base.html.twig #}
 
-Continuer sur Symfony.com
--------------------------
+{# you can read and display just one flash message type... #}
+{% for message in app.flashes('notice') %}
+    <div class="flash-notice">
+        {{ message }}
+    </div>
+{% endfor %}
 
-- [Le système de bundle](http://symfony.com/doc/current/bundles.html)
-- [Bonnes pratiques avec les bundles](http://symfony.com/doc/current/bundles/best_practices.html)
+{# ...or you can read and display every flash message available #}
+{% for label, messages in app.flashes %}
+    {% for message in messages %}
+        <div class="flash-{{ label }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endfor %}
+```
+
+Voir [la documentation du contrôleur](https://symfony.com/doc/current/controller.html#managing-the-session).
+
+Le composant Session complet
+============================
+
+Voir [la documentation du composant Session](https://symfony.com/doc/current/components/http_foundation/sessions.html).

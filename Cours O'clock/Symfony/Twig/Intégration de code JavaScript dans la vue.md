@@ -1,82 +1,64 @@
-Introduction au système de bundle
-=================================
+# Intégrer du JavaScript dans les vues
 
-Un bundle est similaire à la notion de plugin, mais "en mieux". La différence est que dans Symfony _tout_ est un bundle, depuis le noyau du framework jusqu'à votre code d'application. Vous pouvez ainsi utiliser des bundles tiers ou distribuer les vôtres. Il est donc facile de choisir quelles fonctionnalités vous souhaitez activer dans votre application et de les régler selon vos besoins.
+## Exemple d'usage simple
 
-Un bundle est un ensemble de fichiers rassemblés dans un dossier et qui implémente une fonctionnalité, par exemple un BlogBundle, un ForumBundle, un bundle pour gérer les utilisateurs.
+Prenons l'exemple de notre blog, où nous souhaitons afficher le nombre de caractères saisis dans un champ text ou textarea.
 
-Les bundles utilisés par votre application doivent être activés dans la classe `AppKernel` :
+Créons le fichier qui contient le code JS de notre fonctionnalité dans `web/js/` :
 
-```php
-// app/AppKernel.php
-public function registerBundles()
-{
-    $bundles = array(
-        new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
-        new Symfony\Bundle\SecurityBundle\SecurityBundle(),
-        new Symfony\Bundle\TwigBundle\TwigBundle(),
-        new Symfony\Bundle\MonologBundle\MonologBundle(),
-        new Symfony\Bundle\SwiftmailerBundle\SwiftmailerBundle(),
-        new Symfony\Bundle\DoctrineBundle\DoctrineBundle(),
-        new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
-        new AppBundle\AppBundle(),
-    );
+```js
+$(document).ready(function(e) {
 
-    if (in_array($this->getEnvironment(), array('dev', 'test'))) {
-        $bundles[] = new Symfony\Bundle\WebProfilerBundle\WebProfilerBundle();
-        $bundles[] = new Sensio\Bundle\DistributionBundle\SensioDistributionBundle();
-        $bundles[] = new Sensio\Bundle\GeneratorBundle\SensioGeneratorBundle();
+    function caracterCount($field) {
+        var counter = $field.val().length;
+        var target = $field.next();
+        target.html(counter);
+
     }
+    // Ajoute un span à chaque classe "js-count"
+    $(".js-count").after('<span class="js-count-total">0</span> caractères saisis.');
+    // Ecoute le release de la touche du clavier
+    $(".js-count").keyup(function count() {
+        caracterCount($(this));
+    });
 
-    return $bundles;
-}
+    $(".js-count").each(function(index) {
+        caracterCount($(this));
+    })
+});
 ```
-Vous pouvez ici contrôler quel bundle est utilisé, en l'activant ou le désactivant.
+Intégrons ce fichier JS dans notre layout global (ainsi que jQuery si non déjà intégré) :
 
-Créer un bundle
----------------
+Fichier `app/Resources/views/base.html.twig`
 
-L'_Edition Standard de Symfony_ ou les projets créés par défaut avec l'éxécutable `symfony new my_project` vous fournit un bundle prêt-à-l'emploi, nommé `AppBundle`.
+```twig
+{% block javascripts %}
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script src="{{ asset('js/caracter-count.js') }}"></script>
+{% endblock %}
+```
 
-**Exemple de code minimal pour définir un bundle**
+Puis dans notre fichier de définition de formulaire, ajoutons l'attribut `'class="js-count"'`. Avec Symfony cela se fait en ajoutant la valeur `'class' => 'js-count'` au tableau de paramètres `'attr'` :
 
 ```php
-// src/Acme/TestBundle/AcmeTestBundle.php
-namespace Acme\TestBundle;
-
-use Symfony\Component\HttpKernel\Bundle\Bundle;
-
-class AcmeTestBundle extends Bundle
-{
-}
+// ...
+->add('title', null, [
+        'label' => 'Titre du post',
+        'attr' => [
+            'placeholder' => 'Veuillez mettre un titre optimisé SEO',
+            'help_text' => 'Mais surtout ne dépassez pas 60 caractères.',
+            'class' => 'js-count',
+        ]
+    ])
+->add('image', FileType::class, ['label' => 'Illustration'])
+->add('body', null, [
+    'label' => 'Corps du post',
+    'attr' => [
+        'class' => 'js-count',
+    ]
+])
+// ...
 ```
+A l'édition ou à l'ajout d'un Post vous devriez voir :
 
-**Activation du bundle**
-
-```php
-// app/AppKernel.php
-public function registerBundles()
-{
-    $bundles = array(
-        // ...
-
-        // register your bundle
-        new Acme\TestBundle\AcmeTestBundle(),
-    );
-    // ...
-
-    return $bundles;
-}
-```
-
-**Créer un bundle avec la ligne de commaned Symfony**
-
-`php bin/console generate:bundle --namespace=Acme/TestBundle`
-
-Cette commande ajoute le bundle pour vous dans le ficher `AppKernel`.
-
-Continuer sur Symfony.com
--------------------------
-
-- [Le système de bundle](http://symfony.com/doc/current/bundles.html)
-- [Bonnes pratiques avec les bundles](http://symfony.com/doc/current/bundles/best_practices.html)
+![](img/twig-js-car-count.png)

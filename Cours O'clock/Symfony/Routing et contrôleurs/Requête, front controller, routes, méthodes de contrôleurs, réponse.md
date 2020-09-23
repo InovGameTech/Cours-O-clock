@@ -1,82 +1,132 @@
-Introduction au système de bundle
-=================================
+# Routing et Controllers
 
-Un bundle est similaire à la notion de plugin, mais "en mieux". La différence est que dans Symfony _tout_ est un bundle, depuis le noyau du framework jusqu'à votre code d'application. Vous pouvez ainsi utiliser des bundles tiers ou distribuer les vôtres. Il est donc facile de choisir quelles fonctionnalités vous souhaitez activer dans votre application et de les régler selon vos besoins.
+## Les fondamentaux HTTP avec Symfony
 
-Un bundle est un ensemble de fichiers rassemblés dans un dossier et qui implémente une fonctionnalité, par exemple un BlogBundle, un ForumBundle, un bundle pour gérer les utilisateurs.
+Nous vous conseillont la lecture de cette page issue du site de Symfony :  
+[Symfony : les fondamentaux HTTP](http://symfony.com/doc/current/introduction/http_fundamentals.html)
 
-Les bundles utilisés par votre application doivent être activés dans la classe `AppKernel` :
+## Classes Request et Response
+
+Dans Symfony, les classes Request et Response sont des représentations objet de ces requêtes, et contiennent les informations relatives à la requête HTTP, et des méthodes qui facilitent leur manipulation.
+
+**Le composant HttpFoundation en détail :** https://symfony.com/doc/current/components/http_foundation.html
+
+**L'API de Request et Response :**
+On voit ici le code source de ces deux classes, il permettra de connaitre les méthodes et propriétés disponibles !
+
+* Définition de la classe Request (https://github.com/symfony/symfony/blob/4.3/src/Symfony/Component/HttpFoundation/Request.php)
+* Définition de la classe Response (https://github.com/symfony/symfony/blob/4.3/src/Symfony/Component/HttpFoundation/Response.php)
+
+## FrontController et Router
+
+### Front Controller
+
+Le FrontController sert de point d'entrée unique d'une application MVC, il permet d'organiser le routage et d'éxécuter la méthode de controller attendue, en fonction de la requête du visiteur.  
+[En savoir plus sur le FrontController et le AppKernel](http://symfony.com/doc/current/configuration/front_controllers_and_kernel.html)  
+
+![Request / Response](https://symfony.com/doc/current/_images/http/request-flow.svg)
+
+[En savoir plus (doc symfony)](http://symfony.com/doc/current/introduction/http_fundamentals.html)
+
+### Routage
+
+Le routage consiste à déterminer l'action à éxécuter en fonction de la requête reçue.
+Le Composant *Router* de Symfony permet de :  
+* définir les routes de votre application et les mapper avec les méthodes correspondantes. La configuration des routes se fait dans le fichier de config `routing.yml`,
+* générer l'url correspondante à une route donnée,
+* il peut être accessible en tant que *service* dans les controllers ou d'autres composants de l'application,
+* et il met à disposition des [commandes console](http://symfony.com/doc/current/routing/debug.html) permettant de débugger les routes de votre application.
+
+[Pour aller plus loin, Composant Router (avancé)](http://symfony.com/doc/current/components/routing.html)
+
+### Définition des routes
+
+* définir une route :
+  ```
+  # app/config/routing.yml
+  shop_list:
+      path:     /shop
+      defaults: { _controller: AppBundle:Shop:list }
+  ```
+* définir une route avec des paramètres variables ("wildcards")
+  ```
+  shop_show:
+    path:     /shop/{slug}
+    defaults: { _controller: AppBundle:Shop:show }
+  ```
+* définir des contraintes [("requirements")](http://symfony.com/doc/current/routing/requirements.html)
+  ```
+  shop_list:
+    path:      /shop/{page}
+    defaults:  { _controller: AppBundle:Shop:list }
+    requirements:
+        page: '\d+'
+  ```
+  Ces contraintes sont définies grâce aux expressions régulières.
+* définir des valeurs par défaut pour les paramètres
+  ```
+  shop_list:
+    path:      /shop/{page}
+    defaults:  { _controller: AppBundle:Shop:list, page: 1 }
+    requirements:
+        page: '\d+'
+  ```
+
+### Routes avec annotations
+
+_Méthode recommandée_
 
 ```php
-// app/AppKernel.php
-public function registerBundles()
+/**
+ * Correspond à /blog/*
+ *
+ * @Route("/blog/{slug}", name="blog_show")
+ */
+public function showAction($slug)
 {
-    $bundles = array(
-        new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
-        new Symfony\Bundle\SecurityBundle\SecurityBundle(),
-        new Symfony\Bundle\TwigBundle\TwigBundle(),
-        new Symfony\Bundle\MonologBundle\MonologBundle(),
-        new Symfony\Bundle\SwiftmailerBundle\SwiftmailerBundle(),
-        new Symfony\Bundle\DoctrineBundle\DoctrineBundle(),
-        new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
-        new AppBundle\AppBundle(),
-    );
+    // $slug sera égal à la partie dynamique de l'URL
+    // soit à l'URL /blog/super-routing, then $slug='super-routing'
 
-    if (in_array($this->getEnvironment(), array('dev', 'test'))) {
-        $bundles[] = new Symfony\Bundle\WebProfilerBundle\WebProfilerBundle();
-        $bundles[] = new Sensio\Bundle\DistributionBundle\SensioDistributionBundle();
-        $bundles[] = new Sensio\Bundle\GeneratorBundle\SensioGeneratorBundle();
-    }
-
-    return $bundles;
-}
-```
-Vous pouvez ici contrôler quel bundle est utilisé, en l'activant ou le désactivant.
-
-Créer un bundle
----------------
-
-L'_Edition Standard de Symfony_ ou les projets créés par défaut avec l'éxécutable `symfony new my_project` vous fournit un bundle prêt-à-l'emploi, nommé `AppBundle`.
-
-**Exemple de code minimal pour définir un bundle**
-
-```php
-// src/Acme/TestBundle/AcmeTestBundle.php
-namespace Acme\TestBundle;
-
-use Symfony\Component\HttpKernel\Bundle\Bundle;
-
-class AcmeTestBundle extends Bundle
-{
-}
-```
-
-**Activation du bundle**
-
-```php
-// app/AppKernel.php
-public function registerBundles()
-{
-    $bundles = array(
-        // ...
-
-        // register your bundle
-        new Acme\TestBundle\AcmeTestBundle(),
-    );
     // ...
-
-    return $bundles;
 }
 ```
 
-**Créer un bundle avec la ligne de commaned Symfony**
+## Préciser la méthode
 
-`php bin/console generate:bundle --namespace=Acme/TestBundle`
+Avec l'annotation `@Route` vous pouvez spécifier quelle(s) méthode(s) sont autorisées pour une route en ajoutant un attribut `methods`.  
+Exemple :
 
-Cette commande ajoute le bundle pour vous dans le ficher `AppKernel`.
+```php
+/**
+ * @Route("/edit/{id}", methods={"GET","POST"})
+ */
+public function editAction($id)
+{
+}
+```
 
-Continuer sur Symfony.com
--------------------------
+## Aller plus loin
 
-- [Le système de bundle](http://symfony.com/doc/current/bundles.html)
-- [Bonnes pratiques avec les bundles](http://symfony.com/doc/current/bundles/best_practices.html)
+- [Pour aller plus loin, _"Guide du Routeur"_](https://symfony.com/doc/current/routing.html)
+- Expressions régulières : [Cheat sheet](https://i.stack.imgur.com/S5b87.jpg) et [Online tester](https://regex101.com/)
+
+## Controller
+
+### Méthodes de Controller
+
+Une méthode de controller (sauf celles qui ne sont jamais appelées directement par une route) prend toujours un objet *Request* comme paramètre, et renvoie toujours un objet *Response*.  
+
+Voir [la liste des méthodes ici](https://github.com/symfony/framework-bundle/blob/master/Controller/ControllerTrait.php).
+
+### AbstractController
+
+Le framework Symfony comprend notamment un "contrôleur de base" qui propose des méthodes utiles "prêtes à utiliser". Il vous suffit de faire hériter les controllers de votre application de cette classe.
+Ces méthodes permettent notamment de :
+
+* render, renderView : appeler un template
+* createNotFoundException, createAccessDeniedException: renvoyer un [statut HTTP](https://fr.wikipedia.org/wiki/Liste_des_codes_HTTP) particulier (erreurs 404, 403, 500...)
+* generateUrl: générer une url pour une route donnée
+* rediriger le visiteur
+* récupérer les services disponibles dans l'application (router, session...)
+* Déclencher [une redirection interne vers une autre action](https://symfony.com/doc/current/controller/forwarding.html) (forward)
+* Pour récupérer un paramètre depuis `parameters.yml` ou `config.yml > parameters:`, il suffit d'utiliser la méthode `$this->getParameter('secret');`
